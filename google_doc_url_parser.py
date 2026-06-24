@@ -2,37 +2,57 @@ import requests
 from bs4 import BeautifulSoup
 
 
+#url = "your_url"
 
-url = "https://docs.google.com/document/d/e/2PACX-1vTMOmshQe8YvaRXi6gEPKKlsC6UpFJSMAk4mQjLm_u1gmHdVVTaeh7nBNFBRlui0sTZ-snGwZM4DBCT/pub"
+def draw_coordinate(url_data):
+    url = url_data
 
-response = requests.get(url)
-data = response.text
-#this below code is giving me a whole html code instead of just table text, therefore need to do something else
-# if response.status_code == 200:
-#     document_text = response.text
-#     print(document_text)
-# else:
-#     print(f"Failed to retrieve the document, satus code:{response.status_code}")
+    response = requests.get(url)
+    response.raise_for_status()
+    data = response.text
 
+    parse = BeautifulSoup(data, "html.parser")
 
-parse = BeautifulSoup(data, "html.parser")
+    table = parse.find("table")
 
-#print(parse.prettify())
-
-table = parse.find("table")
-#print(tables)
-
-headers = []
-for th in table.find_all('th'):
-    headers.append(th.text.strip())
-
-row = []
-for tr in table.find_all('tr'):
-    cells = tr.find_all('td')
+    cells = []
+    for row in table.find_all('tr')[1:]:
+        tds = row.find_all('td')
+        
+        if len(tds) >= 3: 
+            clean_row = [td.get_text(strip=True) for td in tds]
+            cells.append(clean_row)
+    
     if not cells:
-        continue
-    for cell in cells:
-        row.append(cell.text.strip())
+        return
+        
 
-print('headers:', headers)
-print('row:', row)
+    parsed_points = []
+    
+    for row in cells:
+        if len(row) < 3:
+            continue
+        try:
+            x, char, y = int(row[0]), row[1], int(row[2])
+            parsed_points.append((x, y, char))
+        except ValueError:
+            pass    #there could be some row that does not have vlaues
+
+    if not parsed_points:
+        return      
+
+
+    max_x = max(point[0] for point in parsed_points)
+    max_y = max(point[1] for point in parsed_points)
+
+    grid = [[' '] * (max_x + 1) for i in range(max_y + 1)]
+
+
+    for x, y, char in parsed_points:
+        grid[y][x] = char
+
+    #print y coordinate fist cause we want to print from top to down
+    for row in reversed(grid):
+        print("".join(row))
+
+draw_coordinate("your_url")
